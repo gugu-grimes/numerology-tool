@@ -1,0 +1,244 @@
+// Prisma Schema — Bazi (Four Pillars of Destiny) Analysis System
+// ADR-001: UTC timestamptz (DateTime in Prisma, stored as ISO 8601 TEXT in SQLite)
+// ADR-002: Soft delete via deleted_at field
+// ADR-004: Autoincrement integer IDs
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ============================================================
+// Module 01: Chart & Pillar (八字排盘与历法模块)
+// ============================================================
+
+/// 八字命盘记录 — 模块 01 创建并拥有
+model Chart {
+  id               Int       @id @default(autoincrement())
+  birthDate        DateTime                                 // 公历出生日期时间（UTC）
+  birthDateType    String                                   // 输入方式："solar" | "lunar"
+  gender           String                                   // 性别："male" | "female"
+  lunarBirthInfo   Json?                                    // 农历出生信息（birthDateType=lunar 时存储）
+  dayMaster        String                                   // 日主天干
+  dayMasterElement String                                   // 日主五行属性
+  jieqiName        String?                                  // 出生时刻节气名称
+  jieqiTime        DateTime?                                // 节气交接时刻（UTC）
+  isBeforeLichun   Boolean?                                 // 是否在立春之前
+  zhourule         String    @default("early_zi")            // 子时处理方式："early_zi" | "late_zi"
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?                                // 软删除（ADR-002）
+
+  pillars          Pillar[]
+  wuxingStats      WuxingStat[]
+  dayMasterStrengths DayMasterStrength[]
+  shishenLabels    ShishenLabel[]
+  gejuPatterns     GejuPattern[]
+  hechongRelations HechongRelation[]
+  bingMachines     BingMachine[]
+  yongShenJiXis    YongShenJiXi[]
+  jiXiongVerdicts  JiXiongVerdict[]
+
+  @@index([createdAt], map: "idx_chart_created")
+  @@map("charts")
+}
+
+/// 四柱数据 — 每条记录对应一柱（年/月/日/时）
+model Pillar {
+  id             Int       @id @default(autoincrement())
+  chartId        Int
+  position       String                                    // 柱位："year" | "month" | "day" | "hour"
+  heavenlyStem   String                                    // 天干
+  earthlyBranch  String                                    // 地支
+  hiddenStems    Json                                      // 藏干数据：{mainQi, middleQi, residualQi}
+  nayin          String?                                   // 纳音五行（可选）
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  chart          Chart     @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@unique([chartId, position], map: "idx_pillar_chart_position")
+  @@map("pillars")
+}
+
+// ============================================================
+// Module 02: Five Elements & Ten Gods Analysis (五行与十神分析模块)
+// ============================================================
+
+/// 五行力量统计记录 — 模块 02 创建并拥有
+model WuxingStat {
+  id         Int       @id @default(autoincrement())
+  chartId    Int       @unique                                    // 关联命盘，一对一
+  metal      Float                                                // 金的力量加权值
+  wood       Float                                                // 木的力量加权值
+  water      Float                                                // 水的力量加权值
+  fire       Float                                                // 火的力量加权值
+  earth      Float                                                // 土的力量加权值
+  missing    Json                                                 // 五行缺失列表
+  dominant   Json                                                 // 五行过旺列表
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?                                            // 软删除（ADR-002）
+
+  chart      Chart     @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@index([chartId], map: "idx_wuxing_chart")
+  @@map("wuxing_stats")
+}
+
+/// 日主旺衰判定记录 — 模块 02 创建并拥有
+model DayMasterStrength {
+  id                Int       @id @default(autoincrement())
+  chartId           Int       @unique                                    // 关联命盘，一对一
+  dayMaster         String                                               // 日主天干
+  dayMasterElement  String                                               // 日主五行属性
+  deLing            Json                                                 // 得令判定详情
+  deDi              Json                                                 // 得地判定详情
+  deZhu             Json                                                 // 得助判定详情
+  strength          String                                               // 旺衰结论枚举
+  strengthLabel     String                                               // 旺衰结论中文标签
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?                                            // 软删除（ADR-002）
+
+  chart             Chart     @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@index([chartId], map: "idx_wangshuai_chart")
+  @@map("day_master_strengths")
+}
+
+/// 十神标注记录 — 模块 02 创建并拥有
+model ShishenLabel {
+  id                Int       @id @default(autoincrement())
+  chartId           Int       @unique                                    // 关联命盘，一对一
+  stemLabels        Json                                                 // 四柱天干十神标注
+  hiddenStemLabels  Json                                                 // 地支藏干十神标注
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?                                            // 软删除（ADR-002）
+
+  chart             Chart     @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@index([chartId], map: "idx_shishen_chart")
+  @@map("shishen_labels")
+}
+
+/// 格局判定与喜忌记录 — 模块 02 创建并拥有
+model GejuPattern {
+  id                  Int       @id @default(autoincrement())
+  chartId             Int       @unique                                    // 关联命盘，一对一
+  monthBranchGod       String                                               // 月令本气十神
+  patternType          String                                               // 格局类型
+  isEstablished        Boolean                                              // 格局是否成立
+  breakReason          String?                                              // 破格原因
+  favorableElements    Json                                                 // 喜神五行列表
+  favorableGods        Json                                                 // 喜神十神列表
+  unfavorableElements  Json                                                 // 忌神五行列表
+  unfavorableGods      Json                                                 // 忌神十神列表
+  neutralElements      Json                                                 // 闲神五行列表
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?                                            // 软删除（ADR-002）
+
+  chart               Chart     @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@index([chartId], map: "idx_geju_chart")
+  @@map("geju_patterns")
+}
+
+// ============================================================
+// Module 03: Combination & Clash Analysis (合冲刑害分析模块)
+// ============================================================
+
+/// 合冲刑害关系记录 — 模块 03 创建并拥有
+model HechongRelation {
+  id              Int       @id @default(autoincrement())
+  chartId         Int       @unique                                    // 关联命盘，一对一
+  tianganHe       Json                                                 // 天干五合识别结果
+  dizhiLiuhe      Json                                                 // 地支六合识别结果
+  dizhiSanhe      Json                                                 // 地支三合局识别结果
+  liuchong        Json                                                 // 六冲识别结果
+  sanxing         Json                                                 // 三刑识别结果
+  liuhai          Json                                                 // 六害识别结果
+  ziXing          Json                                                 // 自刑识别结果
+  bingJudgments   Json                                                 // 辨病判定结果
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?                                            // 软删除（ADR-002）
+
+  chart           Chart     @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@index([chartId], map: "idx_hechong_chart")
+  @@map("hechong_relations")
+}
+
+// ============================================================
+// Module 04: Disease Diagnosis & Yongshen (辨病与用神模块)
+// ============================================================
+
+/// 病机诊断记录 — 模块 04 创建并拥有
+model BingMachine {
+  id                   Int       @id @default(autoincrement())
+  chartId              Int       @unique                                    // 关联命盘，一对一
+  diseases             Json                                                 // 八大病机检测结果列表
+  dayMasterExcess      Json?                                                 // 日主过旺病机详情
+  dayMasterWeakness    Json?                                                 // 日主过弱病机详情
+  wuxingImbalance      Json?                                                 // 五行偏枯病机详情
+  wuxingAbsence        Json?                                                 // 五行缺漏病机详情
+  shishenConflict      Json?                                                 // 十神交战病机详情
+  gejuBreak            Json?                                                 // 格局破败病机详情
+  heBindYongShen       Json?                                                 // 合绊用神病机详情
+  temperatureImbalance Json?                                                 // 寒暖湿燥失衡病机详情
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?                                            // 软删除（ADR-002）
+
+  chart                Chart     @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@index([chartId], map: "idx_bing_chart")
+  @@map("bing_machines")
+}
+
+/// 用神喜忌记录 — 模块 04 创建并拥有
+model YongShenJiXi {
+  id              Int       @id @default(autoincrement())
+  chartId         Int       @unique                                    // 关联命盘，一对一
+  yongShen        Json                                                 // 用神详情
+  xiShen          Json                                                 // 喜神列表
+  jiShen          Json                                                 // 忌神列表
+  chouShen        Json                                                 // 仇神列表
+  xianShen        Json                                                 // 闲神列表
+  derivationChains Json                                                // 推导逻辑链列表
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?                                            // 软删除（ADR-002）
+
+  chart           Chart     @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@index([chartId], map: "idx_yongshen_chart")
+  @@map("yongshen_jixi")
+}
+
+/// 吉凶论断记录 — 模块 04 创建并拥有
+model JiXiongVerdict {
+  id          Int       @id @default(autoincrement())
+  chartId     Int       @unique                                    // 关联命盘，一对一
+  personality Json                                                 // 性格特质论断
+  career      Json                                                 // 事业官运论断
+  wealth      Json                                                 // 财运论断
+  marriage    Json                                                 // 婚姻感情论断
+  health      Json                                                 // 健康寿元论断
+  education   Json                                                 // 学业文昌论断
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?                                            // 软删除（ADR-002）
+
+  chart       Chart     @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@index([chartId], map: "idx_jixiong_chart")
+  @@map("jixiong_verdicts")
+}
