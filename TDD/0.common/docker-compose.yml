@@ -1,0 +1,40 @@
+name: opera-test
+
+services:
+  backend:
+    build:
+      context: ../../../code/backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: "file:./data/app.db"
+      JWT_SECRET: "# TODO: set a real JWT secret before running tests"
+    ports:
+      - "3001:3000"
+    volumes:
+      - opera-test-db-data:/app/data
+      - ../../../code/backend/src:/app/src
+      - ../../../code/backend/prisma:/app/prisma
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../../../code/frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_URL: "http://localhost:3001"
+    ports:
+      - "5174:5174"
+    volumes:
+      - ../../../code/frontend/src:/app/src
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  opera-test-db-data: {}
