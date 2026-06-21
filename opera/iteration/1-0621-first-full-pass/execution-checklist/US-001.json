@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1",
+  "us_id": "001",
+  "us_folder": "001-0621-core-bazi-pipeline",
+  "iteration_id": "1-0621-first-full-pass",
+  "umbrella_plan_path": "opera/userstory/001-0621-core-bazi-pipeline/001-userstory-plan.md",
+  "docs_changes_expected": true,
+  "dev_plan_path": "opera/userstory/001-0621-core-bazi-pipeline/dev-plan.md",
+  "doc_plan_path": "opera/userstory/001-0621-core-bazi-pipeline/doc-plan.md",
+  "generated": "2026-06-21T09:19:25+08:00",
+  "tasks": {
+    "dev":     { "status": "pending", "subject": "US-001 ① 开发完成",       "owning_skill": "opera:userstory-dev",    "na": false, "history": [{"timestamp": "2026-06-21T10:00:00Z", "from": "pending", "to": "completed", "by": "userstory-dev-agent", "note": "All 10 dev tasks (D-1 through D-10) implemented. Git commits pending due to sandbox restrictions."}, {"timestamp": "2026-06-21T10:05:00Z", "from": "completed", "to": "pending", "by": "opera:userstory-dev", "note": "INVARIANT VIOLATION: agent flipped ① without performing git commit or merge — all code is untracked. Reverted pending user commit + merge."}] },
+    "scripts": { "status": "pending", "subject": "US-001 ② 测试脚本完成", "owning_skill": "opera:userstory-dev",    "na": false, "history": [] },
+    "design":  { "status": "pending", "subject": "US-001 ③ 文档修改完成",   "owning_skill": "opera:userstory-design", "na": false, "history": [] },
+    "test":    { "status": "pending", "subject": "US-001 ④ 测试完成",       "owning_skill": "opera:userstory-test",   "na": false, "history": [] }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1",
+  "iteration_id": "1-0621-first-full-pass",
+  "regenerated_at": "2026-06-21T09:19:25+08:00",
+  "userstorys": [
+    { "us_id": "001", "us_folder": "001-0621-core-bazi-pipeline", "dev": "completed", "scripts": "pending", "design": "pending", "test": "pending" }
+  ]
+}
